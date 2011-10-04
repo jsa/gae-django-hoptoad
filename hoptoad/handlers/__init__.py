@@ -6,9 +6,13 @@ import os
 import imp
 import pprint
 
+from google.appengine.api.taskqueue.taskqueue import _DEFAULT_QUEUE
+from django.core.exceptions import MiddlewareNotUsed
+
 from hoptoad import get_hoptoad_settings
-from hoptoad.handlers.threaded import ThreadedNotifier
+from hoptoad.handlers.async import AsyncNotifier
 from hoptoad.handlers.blocking import BlockingNotifier
+from hoptoad.handlers.deferred import DeferredNotifier
 
 
 logger = logging.getLogger(__name__)
@@ -16,10 +20,12 @@ logger = logging.getLogger(__name__)
 def get_handler(*args, **kwargs):
     """Returns an initialized handler object"""
     hoptoad_settings = get_hoptoad_settings()
-    handler = hoptoad_settings.get("HOPTOAD_HANDLER", "threadpool")
-    if handler.lower() == 'threadpool':
-        threads = hoptoad_settings.get("HOPTOAD_THREAD_COUNT", 4)
-        return ThreadedNotifier(threads , *args, **kwargs)
+    handler = hoptoad_settings.get('HOPTOAD_HANDLER', 'async')
+    if handler.lower() == 'async':
+        return AsyncNotifier(*args, **kwargs)
+    elif handler.lower() == 'deferred':
+        queue = hoptoad_settings.get('HOPTOAD_DEFERRED_QUEUE', _DEFAULT_QUEUE)
+        return DeferredNotifier(queue, *args, **kwargs)
     elif handler.lower() == 'blocking':
         return BlockingNotifier(*args, **kwargs)
     else:

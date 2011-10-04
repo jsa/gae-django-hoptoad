@@ -1,16 +1,17 @@
+import logging
 import sys
 import traceback
-import urllib2
 from xml.dom.minidom import getDOMImplementation
 
-from django.views.debug import get_safe_settings
-from django.conf import settings
+from google.appengine.api import urlfetch
+from google.appengine.api.urlfetch_errors import DownloadError
 
 from hoptoad import VERSION, NAME, URL
 from hoptoad import get_hoptoad_settings
 from hoptoad.api.htv1 import _parse_environment, _parse_request, _parse_session
 from hoptoad.api.htv1 import _parse_message
 
+logger = logging.getLogger(__name__)
 
 def _class_name(class_):
     return class_.__class__.__name__
@@ -192,55 +193,56 @@ def generate_payload(request_tuple):
     
     return xdoc.toxml('utf-8')
 
-def _ride_the_toad(payload, timeout, use_ssl):
+def _ride_the_toad(payload, rpc, use_ssl):
     """Send a notification (an HTTP POST request) to Hoptoad.
     
     Parameters:
     payload -- the XML payload for the request from _generate_payload()
-    timeout -- the maximum timeout, in seconds, or None to use the default
+    rpc -- AppEngine RPC object for urlfetch
     
     """
     headers = { 'Content-Type': 'text/xml' }
-    
+
     url_template = '%s://hoptoadapp.com/notifier_api/v2/notices'
     notification_url = url_template % ("https" if use_ssl else "http")
-    
+
     # allow the settings to override all urls
     notification_url = get_hoptoad_settings().get('HOPTOAD_NOTIFICATION_URL',
                                                    notification_url)
-    
-    r = urllib2.Request(notification_url, payload, headers)
+
+    urlfetch.make_fetch_call(rpc=rpc,
+                             url=notification_url,
+                             payload=payload,
+                             method=urlfetch.POST,
+                             headers=headers)
+
+def _aftermath(rpc, retry, use_ssl):
+    debug = get_hoptoad_settings().get('HOPTOAD_DEBUG', False)
     try:
-        if timeout:
-            # timeout is 2.6 addition!
-            response = urllib2.urlopen(r, timeout=timeout)
-        else:
-            response = urllib2.urlopen(r)
-    except urllib2.URLError, err:
-        pass
+        response = rpc.get_result()
+    except DownloadError, err:
+        if debug: logger.debug(err, exc_info=1)
     else:
-        try:
-            # getcode is 2.6 addition!!
-            status = response.getcode()
-        except AttributeError:
-            # default to just code
-            status = response.code
-        
-        if status == 403 and use_ssl:
-            if get_hoptoad_settings().get('HOPTOAD_NO_SSL_FALLBACK', False):
+        status = response.status_code
+
+        if status == 200:
+            if debug: logger.debug("Notification sent successfully")
+        elif status == 403:
+            if use_ssl and get_hoptoad_settings().get('HOPTOAD_NO_SSL_FALLBACK', False):
                 # if we can not use SSL, re-invoke w/o using SSL
-                _ride_the_toad(payload, timeout, use_ssl=False)
-        if status == 403 and not use_ssl:
-            # we were not trying to use SSL but got a 403 anyway
+                payload, rpc = retry
+                _ride_the_toad(payload, rpc, use_ssl=False)
+            # else we were not trying to use SSL but got a 403 anyway
             # something else must be wrong (bad API key?)
-            pass
-        if status == 422:
+        elif status == 422:
             # couldn't send to hoptoad..
-            pass
-        if status == 500:
+            if debug: logger.debug("Response error 422")
+        elif status == 500:
             # hoptoad is down
-            pass
+            if debug: logger.debug("Response error 422")
 
 def report(payload, timeout):
     use_ssl = get_hoptoad_settings().get('HOPTOAD_USE_SSL', False)
-    return _ride_the_toad(payload, timeout, use_ssl)
+    rpc = urlfetch.create_rpc(timeout)
+    _ride_the_toad(payload, rpc, use_ssl)
+    _aftermath(rpc, (payload, urlfetch.create_rpc(timeout)), use_ssl)

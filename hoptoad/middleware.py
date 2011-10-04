@@ -1,4 +1,3 @@
-import itertools
 import logging
 import re
 
@@ -17,24 +16,24 @@ class HoptoadNotifierMiddleware(object):
         """Initialize the middleware."""
         hoptoad_settings = get_hoptoad_settings()
         self._init_middleware(hoptoad_settings)
-    
+
     def _init_middleware(self, hoptoad_settings):
         if 'HOPTOAD_API_KEY' not in hoptoad_settings:
             raise MiddlewareNotUsed
-        
+
         if settings.DEBUG:
             if not hoptoad_settings.get('HOPTOAD_NOTIFY_WHILE_DEBUG', False):
                 raise MiddlewareNotUsed
-        
+
         self.timeout = hoptoad_settings.get('HOPTOAD_TIMEOUT', None)
         self.notify_404 = hoptoad_settings.get('HOPTOAD_NOTIFY_404', False)
         self.notify_403 = hoptoad_settings.get('HOPTOAD_NOTIFY_403', False)
-        
+
         ignore_agents = hoptoad_settings.get('HOPTOAD_IGNORE_AGENTS', [])
         self.ignore_agents = map(re.compile, ignore_agents)
-        
+
         self.handler = get_handler()
-    
+
     def _ignore(self, request):
         """Return True if the given request should be ignored,
         False otherwise.
@@ -42,7 +41,7 @@ class HoptoadNotifierMiddleware(object):
         """
         ua = request.META.get('HTTP_USER_AGENT', '')
         return any(i.search(ua) for i in self.ignore_agents)
-    
+
     def process_response(self, request, response):
         """Process a reponse object.
         
@@ -58,14 +57,14 @@ class HoptoadNotifierMiddleware(object):
         """
         if self._ignore(request):
             return response
-        
+
         sc = response.status_code
         if sc in [404, 403] and getattr(self, "notify_%d" % sc):
             self.handler.enqueue(htv2.generate_payload((request, sc)),
                                  self.timeout)
-        
+
         return response
-    
+
     def process_exception(self, request, exc):
         """Process an exception.
         
@@ -76,9 +75,7 @@ class HoptoadNotifierMiddleware(object):
         """
         if self._ignore(request):
             return None
-        
+
         self.handler.enqueue(htv2.generate_payload((request, None)),
                              self.timeout)
         return None
-    
-
