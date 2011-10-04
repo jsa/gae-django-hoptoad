@@ -11,8 +11,6 @@ from hoptoad import get_hoptoad_settings
 from hoptoad.api.htv1 import _parse_environment, _parse_request, _parse_session
 from hoptoad.api.htv1 import _parse_message
 
-logger = logging.getLogger(__name__)
-
 def _class_name(class_):
     return class_.__class__.__name__
 
@@ -210,6 +208,8 @@ def _ride_the_toad(payload, rpc, use_ssl):
     notification_url = get_hoptoad_settings().get('HOPTOAD_NOTIFICATION_URL',
                                                    notification_url)
 
+    debug = get_hoptoad_settings().get('HOPTOAD_DEBUG', False)
+    if debug: logging.debug("hoptoad: submitting notification")
     urlfetch.make_fetch_call(rpc=rpc,
                              url=notification_url,
                              payload=payload,
@@ -221,12 +221,14 @@ def _aftermath(rpc, retry, use_ssl):
     try:
         response = rpc.get_result()
     except DownloadError, err:
-        if debug: logger.debug(err, exc_info=1)
+        if debug:
+            logging.debug(err, exc_info=1)
+            logging.debug("hoptoad: failed to send notification")
     else:
         status = response.status_code
 
         if status == 200:
-            if debug: logger.debug("Notification sent successfully")
+            if debug: logging.debug("hoptoad: notification sent successfully")
         elif status == 403:
             if use_ssl and get_hoptoad_settings().get('HOPTOAD_NO_SSL_FALLBACK', False):
                 # if we can not use SSL, re-invoke w/o using SSL
@@ -236,10 +238,12 @@ def _aftermath(rpc, retry, use_ssl):
             # something else must be wrong (bad API key?)
         elif status == 422:
             # couldn't send to hoptoad..
-            if debug: logger.debug("Response error 422")
+            if debug: logging.debug("hoptoad: response error 422")
         elif status == 500:
             # hoptoad is down
-            if debug: logger.debug("Response error 422")
+            if debug: logging.debug("hoptopad: response error 500")
+        else:
+            if debug: logging.debug("hoptoad: response error %d" % status)
 
 def report(payload, timeout):
     use_ssl = get_hoptoad_settings().get('HOPTOAD_USE_SSL', False)

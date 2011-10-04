@@ -1,9 +1,8 @@
 import traceback
-import urllib2
 import yaml
 
-from django.views.debug import get_safe_settings
 from django.conf import settings
+from django.views.debug import get_safe_settings
 
 from hoptoad import get_hoptoad_settings
 
@@ -91,22 +90,7 @@ def _generate_payload(request, exc=None, trace=None, message=None, error_class=N
     }}, default_flow_style=False)
 
 def _ride_the_toad(payload, timeout):
-    """Send a notification (an HTTP POST request) to Hoptoad.
-    
-    Parameters:
-    payload -- the YAML payload for the request from _generate_payload()
-    timeout -- the maximum timeout, in seconds, or None to use the default
-    """
-    headers = { 'Content-Type': 'application/x-yaml',
-                'Accept': 'text/xml, application/xml', }
-    r = urllib2.Request('http://hoptoadapp.com/notices', payload, headers)
-    try:
-        if timeout:
-            urllib2.urlopen(r, timeout=timeout)
-        else:
-            urllib2.urlopen(r)
-    except urllib2.URLError:
-        pass
+    raise NotImplementedError, "If needed, imitate from htv2"
 
 def report(payload, timeout):
-    return _ride_the_toad(payload, timeout)
+    raise NotImplementedError, "If needed, imitate from htv2"

@@ -1,10 +1,6 @@
-import logging
-
 from google.appengine.ext import deferred
 
 from hoptoad.api import htv2
-
-logger = logging.getLogger(__name__)
 
 class DeferredNotifier(object):
     """An async Hoptoad notifier that uses AppEngine's deferred library."""

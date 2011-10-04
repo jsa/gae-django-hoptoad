@@ -1,11 +1,7 @@
-import logging
-
 from google.appengine.api import urlfetch
 
 from hoptoad import get_hoptoad_settings
 from hoptoad.api import htv2
-
-logger = logging.getLogger(__name__)
 
 class AsyncNotifier(object):
     """An async Hoptoad notifier."""

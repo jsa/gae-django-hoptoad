@@ -9,22 +9,20 @@ from hoptoad.api import htv2
 from hoptoad.handlers import get_handler
 
 
-logger = logging.getLogger(__name__)
-
 class HoptoadNotifierMiddleware(object):
     def __init__(self):
         """Initialize the middleware."""
-        hoptoad_settings = get_hoptoad_settings()
-        self._init_middleware(hoptoad_settings)
+        self._init_middleware(get_hoptoad_settings())
 
     def _init_middleware(self, hoptoad_settings):
         if 'HOPTOAD_API_KEY' not in hoptoad_settings:
             raise MiddlewareNotUsed
 
-        if settings.DEBUG:
-            if not hoptoad_settings.get('HOPTOAD_NOTIFY_WHILE_DEBUG', False):
-                raise MiddlewareNotUsed
+        if settings.DEBUG \
+           and not hoptoad_settings.get('HOPTOAD_NOTIFY_WHILE_DEBUG', False):
+            raise MiddlewareNotUsed
 
+        self.debug = hoptoad_settings.get('HOPTOAD_DEBUG', False)
         self.timeout = hoptoad_settings.get('HOPTOAD_TIMEOUT', None)
         self.notify_404 = hoptoad_settings.get('HOPTOAD_NOTIFY_404', False)
         self.notify_403 = hoptoad_settings.get('HOPTOAD_NOTIFY_403', False)
@@ -73,9 +71,8 @@ class HoptoadNotifierMiddleware(object):
         be used.
         
         """
-        if self._ignore(request):
-            return None
-
-        self.handler.enqueue(htv2.generate_payload((request, None)),
-                             self.timeout)
+        if not self._ignore(request):
+            if self.debug: logging.debug("hoptoad: sending exception: %r" % exc)
+            self.handler.enqueue(htv2.generate_payload((request, None)),
+                                 self.timeout)
         return None

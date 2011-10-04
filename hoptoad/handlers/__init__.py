@@ -1,7 +1,6 @@
 """Implementations of different handlers that communicate with hoptoad in
 various different protocols.
 """
-import logging
 import os
 import imp
 import pprint
@@ -13,9 +12,6 @@ from hoptoad import get_hoptoad_settings
 from hoptoad.handlers.async import AsyncNotifier
 from hoptoad.handlers.blocking import BlockingNotifier
 from hoptoad.handlers.deferred import DeferredNotifier
-
-
-logger = logging.getLogger(__name__)
 
 def get_handler(*args, **kwargs):
     """Returns an initialized handler object"""
