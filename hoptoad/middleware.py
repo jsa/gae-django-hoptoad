@@ -1,6 +1,7 @@
 import logging
 import re
 
+from django import http
 from django.conf import settings
 from django.core.exceptions import MiddlewareNotUsed
 
@@ -32,13 +33,14 @@ class HoptoadNotifierMiddleware(object):
 
         self.handler = get_handler()
 
-    def _ignore(self, request):
+    def _ignore(self, request, exc=None):
         """Return True if the given request should be ignored,
         False otherwise.
 
         """
         ua = request.META.get('HTTP_USER_AGENT', '')
-        return any(i.search(ua) for i in self.ignore_agents)
+        return any(i.search(ua) for i in self.ignore_agents) \
+               or (isinstance(exc, http.Http404) and not self.notify_404)
 
     def process_response(self, request, response):
         """Process a reponse object.
@@ -71,7 +73,7 @@ class HoptoadNotifierMiddleware(object):
         be used.
         
         """
-        if not self._ignore(request):
+        if not self._ignore(request, exc):
             if self.debug: logging.debug("hoptoad: sending exception: %r" % exc)
             self.handler.enqueue(htv2.generate_payload((request, None)),
                                  self.timeout)
