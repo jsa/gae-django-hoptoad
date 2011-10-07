@@ -35,16 +35,18 @@ def _parse_request(request):
     """Return a request mapping for a notification from the given request."""
     data = []
     for (k, v) in request.POST.items():
+        k = unicode(k).encode('ascii', 'ignore')
         try:
-            data.append((str(k), str(v)))
+            data.append((k, str(v)))
         except UnicodeEncodeError:
-            data.append((str(k), repr(v)))
+            data.append((k, repr(v)))
     if not data:
         for (k, v) in request.GET.items():
+            k = unicode(k).encode('ascii', 'ignore')
             try:
-                data.append((str(k), str(v)))
+                data.append((k, str(v)))
             except UnicodeEncodeError:
-                data.append((str(k), repr(v)))
+                data.append((k, repr(v)))
     data = dict(data)
     for k in PROTECTED_PARAMS.intersection(data.keys()):
         data[k] = '********************'
