@@ -77,7 +77,11 @@ class HoptoadNotifierMiddleware(object):
         
         """
         if not self._ignore(request, exc):
-            if self.debug: logging.debug("hoptoad: sending exception: %r" % exc)
-            self.handler.enqueue(htv2.generate_payload((request, None)),
-                                 self.timeout)
+            try:
+                payload = htv2.generate_payload((request, None))
+                if self.debug: logging.debug("hoptoad: sending exception %r with %s"
+                                             % (exc, self.handler.__class__.__name__))
+                self.handler.enqueue(payload, self.timeout)
+            except Exception, e:
+                logging.exception(e)
         return None
