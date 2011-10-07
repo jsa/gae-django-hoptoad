@@ -6,7 +6,7 @@ from hoptoad.api import htv2
 class BlockingNotifier(object):
     """A blocking Hoptoad notifier."""
 
-    def __init__(self, queue):
+    def __init__(self):
         self._debug = get_hoptoad_settings().get('HOPTOAD_DEBUG', False)
 
     def enqueue(self, payload, timeout):
