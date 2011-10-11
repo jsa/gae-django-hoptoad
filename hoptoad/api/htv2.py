@@ -3,8 +3,9 @@ import sys
 import traceback
 from xml.dom.minidom import getDOMImplementation
 
-from google.appengine.api import urlfetch
+from google.appengine.api import mail, urlfetch
 from google.appengine.api.urlfetch_errors import DownloadError
+from django.conf import settings
 
 from hoptoad import VERSION, NAME, URL
 from hoptoad import get_hoptoad_settings
@@ -238,7 +239,11 @@ def _aftermath(rpc, retry, use_ssl):
             # something else must be wrong (bad API key?)
         elif status == 422:
             # couldn't send to hoptoad..
-            if debug: logging.debug("hoptoad: response error 422")
+            if debug:
+                logging.debug("hoptoad: response error 422")
+                mail.send_mail_to_admins(settings.DEFAULT_FROM_EMAIL,
+                                         "Hoptoad error 422",
+                                         body=retry[0])
         elif status == 500:
             # hoptoad is down
             if debug: logging.debug("hoptopad: response error 500")

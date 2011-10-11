@@ -2,6 +2,7 @@ import traceback
 import yaml
 
 from django.conf import settings
+from django.template.defaultfilters import slugify
 from django.views.debug import get_safe_settings
 
 from hoptoad import get_hoptoad_settings
@@ -34,15 +35,20 @@ def _parse_message(exc):
 def _parse_request(request):
     """Return a request mapping for a notification from the given request."""
     data = []
+    def _enc_key(key):
+        try:
+            return str(key)
+        except UnicodeEncodeError:
+            return str(slugify(key).encode('ascii', 'ignore'))
     for (k, v) in request.POST.items():
-        k = unicode(k).encode('ascii', 'ignore')
+        k = _enc_key(k)
         try:
             data.append((k, str(v)))
         except UnicodeEncodeError:
             data.append((k, repr(v)))
     if not data:
         for (k, v) in request.GET.items():
-            k = unicode(k).encode('ascii', 'ignore')
+            k = _enc_key(k)
             try:
                 data.append((k, str(v)))
             except UnicodeEncodeError:
