@@ -7,6 +7,7 @@ import pprint
 
 from google.appengine.api.taskqueue.taskqueue import _DEFAULT_QUEUE
 from django.core.exceptions import MiddlewareNotUsed
+from django.utils.importlib import import_module
 
 from hoptoad import get_hoptoad_settings
 from hoptoad.handlers.async import AsyncNotifier
@@ -25,16 +26,7 @@ def get_handler(*args, **kwargs):
     elif handler.lower() == 'blocking':
         return BlockingNotifier(*args, **kwargs)
     else:
-        _class_module = hoptoad_settings.get('HOPTOAD_HANDLER_CLASS', None)
-        if not _class_module:
-            # not defined, abort setting up hoptoad, skip it.
-            raise MiddlewareNotUsed
-        # module name that we should import from
-        _module_name = os.path.splitext(os.path.basename(handler))[0]
-        # load the module!
-        m = imp.load_module(_module_name,
-                            *imp.find_module(_module_name,
-                                             [os.path.dirname(handler)]))
-
-        # instantiate the class
-        return getattr(m, _class_module)(*args, **kwargs)
+        _module_name, _class_name = handler.rsplit('.', 1)
+        _module = import_module(_module_name)
+        _class = getattr(_module, _class_name)
+        return _class(*args, **kwargs)
