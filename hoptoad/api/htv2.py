@@ -46,8 +46,8 @@ def generate_payload(request_tuple):
     xdoc = getDOMImplementation().createDocument(None, "notice", None)
     notice = xdoc.firstChild
     
-    # /notice/@version -- should be 2.0
-    notice.setAttribute('version', '2.0')
+    # /notice/@version
+    notice.setAttribute('version', '2.1')
     
     # /notice/api-key
     api_key = xdoc.createElement('api-key')
