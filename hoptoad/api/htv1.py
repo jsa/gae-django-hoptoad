@@ -37,7 +37,7 @@ def _parse_request(request):
     data = []
     def _enc_key(key):
         try:
-            return str(key)
+            return str(slugify(key))
         except UnicodeEncodeError:
             return str(slugify(key).encode('ascii', 'ignore'))
     for (k, v) in request.POST.items():
