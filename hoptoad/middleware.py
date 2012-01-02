@@ -35,6 +35,9 @@ class HoptoadNotifierMiddleware(object):
         self.ignore_exc_types = filter(lambda e: type(e) == type, ignore_exc)
         self.ignore_exc_names = filter(lambda e: isinstance(e, basestring), ignore_exc)
 
+        ignore_exc_messages = hoptoad_settings.get('HOPTOAD_IGNORE_MESSAGES', ())
+        self.ignore_exc_messages = map(re.compile, ignore_exc_messages)
+
         self.handler = get_handler()
 
     def _ignore(self, request, exc=None):
@@ -45,8 +48,11 @@ class HoptoadNotifierMiddleware(object):
         ua = request.META.get('HTTP_USER_AGENT', '')
         return any(i.search(ua) for i in self.ignore_agents) \
                or (isinstance(exc, http.Http404) and not self.notify_404) \
-               or (type(exc).__name__ in self.ignore_exc_names
-                   or isinstance(exc, self.ignore_exc_types))
+               or (exc and (type(exc).__name__ in self.ignore_exc_names
+                            or isinstance(exc, self.ignore_exc_types)
+                            or (exc.message and
+                                any(i.search(exc.message)
+                                    for i in self.ignore_exc_messages))))
 
     def process_response(self, request, response):
         """Process a reponse object.
